@@ -12,7 +12,6 @@ def total_tokens(G, node):
 
 
 def max_possible_direct_transfer(G, sender, receiver):
-    # maximum possible transfer assuming G[sender][sender]['amount'] = inf
     # how many sender tokens receiver can accept
     result = G[receiver][sender]['trust'] * total_tokens(G, receiver)
     # minus sender's tokens he already has
@@ -40,11 +39,11 @@ def direct_transfer(G, sender, receiver, amount):
         G[receiver][sender]['amount'] += (amount - receiver_tokens)
 
 
-def try_to_transfer_with_only_one_branch(G, sender, receiver, amount, max_nodes_you_can_visit=30):
-    # record visited nodes so we don't visit them again so we don't make loops
-    visited_nodes = [sender]
+def try_to_transfer_with_only_one_branch(G, sender, receiver, amount, max_nodes_you_can_visit=50):
     # branch we will grow and use for transfer
     branch = [sender]
+    nodes_visited_from = {sender: []}
+    counter = 0
 
     def step_back():
         del branch[-1]
@@ -52,25 +51,27 @@ def try_to_transfer_with_only_one_branch(G, sender, receiver, amount, max_nodes_
             # we deleted even the sender node
             raise RuntimeError('couldnt find a single branch for transfer')
 
-    while branch[-1] != receiver and len(visited_nodes) <= max_nodes_you_can_visit:
+    while branch[-1] != receiver and counter <= max_nodes_you_can_visit:
         try:
-            candidate = smelling_policy(G, branch[-1], receiver, cursed_nodes=visited_nodes)
+            candidate = smelling_policy(G, branch[-1], receiver,
+                                        cursed_nodes=nodes_visited_from[branch[-1]] + branch)
         except RuntimeError:
             # this exception was raised if path finder was stuck in dead end, so we have to step back
             step_back()
             continue
-        visited_nodes.append(candidate)
-        # if smell_distance(G, candidate, receiver) > smell_distance(G, branch[-1], receiver):
-        #     # candidate node is further away from the receiver, so instead of following him, just step back
-        #     step_back()
-        #     continue
+        nodes_visited_from[branch[-1]].append(candidate)
+        counter += 1
         if amount <= max_possible_direct_transfer(G, branch[-1], candidate):
             branch.append(candidate)
+            try:
+                nodes_visited_from[candidate]
+            except:
+                nodes_visited_from[candidate] = []
 
     if branch[-1] != receiver:
         raise RuntimeError('exceeded maximum number of nodes to visit')
 
-    print('transfer possible, visited nodes: ', len(visited_nodes),
+    print('transfer possible, visited nodes: ', counter,
                                 '   branch length: ', len(branch),
                                 '   amount: ', amount)
 
@@ -82,37 +83,18 @@ def try_to_transfer_with_only_one_branch(G, sender, receiver, amount, max_nodes_
     execute_transfers(G, list_of_direct_transfers)
 
 
-def try_to_transfer_with_recursive_branches(G, sender, receiver, amount, max_recursion_lvl=5):
+def try_to_transfer_with_recursive_branches(G, sender, receiver, amount, max_recursion_lvl=8):
     if total_tokens(G, sender) < amount:
         raise RuntimeError('not enough tokens to send this amount')
     try:
         try_to_transfer_with_only_one_branch(G, sender, receiver, amount)
     except RuntimeError:
         if max_recursion_lvl == 0:
-            raise RuntimeError('reached maximum recursion level and failed to transfer')
+            raise RuntimeError('reached maximum recursion level and failed to transfer', sender, ' ', receiver)
         try_to_transfer_with_recursive_branches(G, sender, receiver, amount / 2,
                                                 max_recursion_lvl=max_recursion_lvl - 1)
         try_to_transfer_with_recursive_branches(G, sender, receiver, amount / 2,
                                                 max_recursion_lvl=max_recursion_lvl - 1)
-
-
-# def find_a_way_to_transfer_with_recursive_branches(G, sender, receiver, amount, max_recursion_lvl=5):
-#     # ! doesnt actually transfer, it just collects the list of direct transfers needed
-#     if total_tokens(G, sender) < amount:
-#         raise RuntimeError('not enough tokens to send this amount')
-#     list_of_direct_transfers = []
-#     try:
-#         list_of_direct_transfers += find_a_way_to_transfer_with_only_one_branch(G, sender, receiver, amount)
-#     except RuntimeError:
-#         if max_recursion_lvl == 0:
-#             raise RuntimeError('reached maximum recursion level and failed to transfer')
-#         list_of_direct_transfers += \
-#             find_a_way_to_transfer_with_recursive_branches(G, sender, receiver, amount / 2,
-#                                                            max_recursion_lvl=max_recursion_lvl - 1)
-#         list_of_direct_transfers += \
-#             find_a_way_to_transfer_with_recursive_branches(G, sender, receiver, amount / 2,
-#                                                            max_recursion_lvl=max_recursion_lvl - 1)
-#     return list_of_direct_transfers
 
 
 def execute_transfers(G, list_of_direct_transfers):
@@ -129,7 +111,8 @@ def make_random_transfers(G, transfer_method, amount, iterations):
 
 if __name__ == "__main__":
     # generate a scale-free graph which resembles a social network
-    G = nx.connected_watts_strogatz_graph(1000, 30, 0.1)
+    #G = nx.connected_watts_strogatz_graph(500, 20, 0.2)
+    nx.barabasi_albert_graph(5000, 10)
     G = G.to_directed()
     initialize_smells(G, dimensions=300)
 
