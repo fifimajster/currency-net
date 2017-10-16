@@ -83,7 +83,7 @@ def try_to_transfer_with_only_one_branch(G, sender, receiver, amount, max_nodes_
             receiver_tokens = amount
         list_of_direct_transfers.append([branch[n], branch[n+1], sender_tokens, receiver_tokens])
     # execute only after we are sure it's possible
-    execute_transfers(G, list_of_direct_transfers)
+    execute_direct_transfers(G, list_of_direct_transfers)
     return list_of_direct_transfers
 
 
@@ -110,16 +110,16 @@ def transfer(G, sender, receiver, amount, test=False):
         transfer_recursively(G, sender, receiver, amount,
                              amount_so_far, list_of_direct_transfers)
         if test:
-            execute_transfers(G, list_of_direct_transfers, reverse=True)
+            execute_direct_transfers(G, list_of_direct_transfers, reverse=True)
     except:
         print("could't find a way to transfer ", amount)
         print('maximum possible amount you can transfer is: ', amount_so_far[0])
         # rollback
-        execute_transfers(G, list_of_direct_transfers, reverse=True)
-    return list_of_direct_transfers
+        execute_direct_transfers(G, list_of_direct_transfers, reverse=True)
+    return amount_so_far[0], list_of_direct_transfers
 
 
-def execute_transfers(G, list_of_direct_transfers, reverse=False):
+def execute_direct_transfers(G, list_of_direct_transfers, reverse=False):
     if reverse:
         for transfer in reversed(list_of_direct_transfers):
             direct_transfer(G, transfer[1], transfer[0], transfer[2], 'receiver')

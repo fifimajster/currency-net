@@ -35,6 +35,12 @@ def smelling_policy(G, node, end_node, cursed_nodes=[]):
     return min(smell_distances)[1]
 
 
+def update_smells(G):
+    initialize_smells(G, 300)
+    for i in range(30):
+        dissipate_smells(G, change_rate=0.1)
+
+
 def find_path(G, node1, node2):
     path = [node1]
     current_node = node1
