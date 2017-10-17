@@ -31,17 +31,17 @@ For a normal user, run client.py. Later it will connect to a server which I will
 
 When you register using client.py, a key will be generated in the same directory. You have to keep it safely, because you will need it to log in.
 
-When you register it's best to use your full surname and name without spaces and capitals. It will help to avoid double accounts. Examples: 'nicolascage', 'johnbongiovi', 'orenthalsimpson'. If you notice someone with other nick it may mean he is using many accounts, or he is faking to be someone else, so think twice before trusting him! It also makes it easier for other users to find you.
+When you register it's best to use your full surname and name without a space and capitals. It will help to avoid double accounts. Examples: 'nicolascage', 'johnbongiovi', 'orenthalsimpson'. If you notice someone with other nick it may mean he is using many accounts, or he is faking to be someone else, so think twice before trusting him! It also makes it easier for other users to find you.
 
 !!! Note that it won't stop people from claiming your name before you, so in the future we have to think of some better way to name.
 
 Now you can add some connections. You connect to any other user by just their name. You can set a potential trust level to someone, and when he sets his potential trust level to you, the real trust level will be set to be minimum of those two potential levels.
 
-It seems to work best if you connect to between 10 and 20 other users, and use trust levels between 0.1 and 0.4, but it still needs more experimentation.
+It seems to work best if you connect to between 10 and 20 other users, and use trust levels between 0.1 and 0.4, but it still needs more experiments.
 
 ## To do:
 
-Ideally this system would be distributed on ethereum or [cicada](http://iamcicada.com/), but as a proof of concept it's easier to run from a central server. If it turns out to work good, we can upgrade it to be decentralized.
+Ideally this system would be distributed on ethereum or [cicada](http://iamcicada.com/), but as a proof of concept it's easier to run from a central server. If it turns out to work well, we can upgrade it to be decentralized.
 
 ### Some short term things to code:
 

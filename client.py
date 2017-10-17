@@ -14,7 +14,7 @@ def print_help():
     print('trust new_trust_lvl name  -  increase your trust level to someone')
     print('t amount name             -  transfer amount to someone')
 
-HOST = '192.168.0.52'
+HOST = 'spongy.hopto.org'
 PORT = 1620
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,7 +37,7 @@ while 1:
     if not received_message:
         break
     print(received_message.decode('utf-8'))
-    to_send = input('>>>')
+    to_send = input('>>> ')
     to_send = to_send.split()
 
     if to_send[0] == 'h':
