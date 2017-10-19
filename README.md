@@ -45,10 +45,7 @@ Ideally this system would be distributed on ethereum or [cicada](http://iamcicad
 
 ### Some short term things to code:
 
-* implement paying the basic income
-* synchronize client threads
 * pickle a backup graph in server
 * make some clever cryptography so you don't have to trust server unconditionally
 * updating smells should be more efficient and shold take trust lvl into consideration
-* some way to make trust level lower again
 * minor improvements to finding branches
