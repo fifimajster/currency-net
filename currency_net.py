@@ -39,7 +39,7 @@ class NetworkKeeper(SmellyGraph):
         self[node2][node1]['potential_trust'] = 0
 
     def update_trust(self, node1, node2):
-        #with self.graph_edit_lock:
+        with self.graph_edit_lock:
             potential1 = self[node1][node2]['potential_trust']
             potential2 = self[node2][node1]['potential_trust']
             min_potential = min(potential1, potential2)
@@ -53,12 +53,12 @@ class NetworkKeeper(SmellyGraph):
             new_lvl = max(min_potential, ratio1, ratio2)
             self[node1][node2]['trust'] = new_lvl
             self[node2][node1]['trust'] = new_lvl
-            if new_lvl == 0:
+            if 0 == new_lvl == potential1 == potential2:
                 self.remove_edge(node1, node2)
             return new_lvl
 
     def get_connections(self, node):
-        return [[neighbor, self[node][neighbor]['trust'], self[node][neighbor]['amount']]
+        return [[neighbor, self[node][neighbor]['amount'], self[node][neighbor]['trust']]
                 for neighbor in self.neighbors(node)]
 
     def pay_ubi(self):
@@ -187,6 +187,10 @@ class NetworkKeeper(SmellyGraph):
                 for transfer in list_of_direct_transfers:
                     self.direct_transfer(transfer[0], transfer[1], transfer[2], 'sender')
                     self.direct_transfer(transfer[0], transfer[1], transfer[3], 'receiver')
+
+    def make_backup(self):
+        with open('network_backup.pickle', 'wb') as handle:
+            pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 

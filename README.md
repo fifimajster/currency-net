@@ -45,7 +45,6 @@ Ideally this system would be distributed on ethereum or [cicada](http://iamcicad
 
 ### Some short term things to code:
 
-* pickle a backup graph in server
 * make some clever cryptography so you don't have to trust server unconditionally
 * updating smells should be more efficient and shold take trust lvl into consideration
-* minor improvements to finding branches
+* (minor improvements to finding branches) not important

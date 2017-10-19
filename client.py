@@ -11,11 +11,12 @@ def print_help():
     print('r name                    -  to register')
     print('l name                    -  to log in')
     print('b                         -  to get your balance')
-    print('trust name new_trust_lvl  -  increase your trust level to someone')
+    print('trust name new_trust_lvl  -  say what trust level to someone do you want')
     print('t name amount             -  transfer amount to someone')
+    print('c                         -  print people connected to you, amount of their tokens you have and trust level between you')
 
 HOST = ''
-PORT = 1629
+PORT = 1622
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')

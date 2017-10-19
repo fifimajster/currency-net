@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from currency_net import *
 import socket
 import sys
@@ -6,8 +7,8 @@ from Crypto.PublicKey import RSA
 from Crypto import Random
 from _thread import *
 
-HOST = '0.0.0.0'  # Symbolic name, meaning all available interfaces
-PORT = 1629  # Arbitrary non-privileged port
+HOST = ''  # Symbolic name, meaning all available interfaces
+PORT = 1622  # Arbitrary non-privileged port
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')
@@ -25,7 +26,14 @@ print('Socket bind complete')
 s.listen(30)
 print('Socket now listening')
 
-N = NetworkKeeper()
+
+try:
+    with open('network_backup.pickle', 'rb') as handle:
+        N = pickle.load(handle)
+except Exception as e:
+    N = NetworkKeeper()
+    print(e)
+
 
 
 # Function for handling connections. This will be used to create threads
@@ -74,6 +82,7 @@ def clientthread(conn, addr):
             if command == 'r':
                 try:
                     N.register_node(name, public_key=clients_public_key)
+                    N.make_backup()
                     logged_name = name
                     conn.sendall(b'registered succesfully')
                 except RuntimeError:
@@ -97,6 +106,7 @@ def clientthread(conn, addr):
                     N.update_smells()
                 N[logged_name][name]['potential_trust'] = new_potential_trust
                 new_lvl = N.update_trust(logged_name, name)
+                N.make_backup()
                 to_send = 'changed trust level to ' + str(new_lvl)
                 conn.sendall(to_send.encode())
             elif command == 't':        # make a transaction
@@ -112,6 +122,7 @@ def clientthread(conn, addr):
                     to_send += str(max_possible_amount)
                     conn.sendall(to_send.encode())
                     continue
+                N.make_backup()
                 conn.sendall(b'transfer succesfull')
             elif command == 'b':
                 balance = N.total_tokens(logged_name)
