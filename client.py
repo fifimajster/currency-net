@@ -15,7 +15,7 @@ def print_help():
     print('t name amount             -  transfer amount to someone')
     print('c                         -  print people connected to you, amount of their tokens you have and trust level between you')
 
-HOST = ''
+HOST = 'ec2-52-29-113-55.eu-central-1.compute.amazonaws.com'
 PORT = 1620
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
