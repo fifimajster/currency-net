@@ -8,7 +8,7 @@ from Crypto import Random
 from _thread import *
 
 HOST = ''  # Symbolic name, meaning all available interfaces
-PORT = 1622  # Arbitrary non-privileged port
+PORT = 1620  # Arbitrary non-privileged port
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')

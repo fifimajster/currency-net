@@ -16,7 +16,7 @@ def print_help():
     print('c                         -  print people connected to you, amount of their tokens you have and trust level between you')
 
 HOST = ''
-PORT = 1622
+PORT = 1620
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')

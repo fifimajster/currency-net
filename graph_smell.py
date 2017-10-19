@@ -77,7 +77,7 @@ if __name__ == "__main__":
     # generate a scale-free graph which resembles a social network
     # nx.watts_strogatz_graph(1000, 10, 0.1)
     # or nx.barabasi_albert_graph(1000, 10)
-    g = nx.watts_strogatz_graph(10000, 30, 0.3)
+    g = nx.watts_strogatz_graph(1000, 30, 0.3)
     g = g.to_directed()
     G = SmellyGraph()
     G.load_graph_structure(g)
