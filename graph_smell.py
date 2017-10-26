@@ -1,36 +1,19 @@
 import numpy as np
 import networkx as nx
-#import matplotlib.pyplot as plt
+import threading
 
 
 class SmellyGraph(nx.DiGraph):
 
+    smell_dimensions = 300
+
     def __init__(self):
         nx.DiGraph.__init__(self)
+        self.graph_edit_lock = threading.RLock()
 
     def load_graph_structure(self, g):
         self.add_nodes_from(g)
         self.add_edges_from(g.edges)
-
-    def initialize_random_smells(self, dimensions, nodes=None):
-        if nodes is None:
-            # by default take all nodes
-            nodes = self.nodes
-        for node in nodes:
-            self.nodes[node]['smell'] = np.random.uniform(-1, 1, dimensions)
-
-    def dissipate_smells(self, change_rate, nodes=None):
-        if nodes is None:
-            # by default take all nodes
-            nodes = self.nodes
-        for node in nodes:
-            neighbor_smells = [self.nodes[neighbor]['smell'] for neighbor in self.neighbors(node)]
-            # take average of neighbouring smells
-            neighbor_avg_smell = np.mean(neighbor_smells, axis=0)
-            current_smell = self.nodes[node]['smell']
-            # normalize
-            neighbor_avg_smell /= np.sqrt(np.mean(neighbor_avg_smell**2))
-            self.nodes[node]['smell'] = change_rate*neighbor_avg_smell + (1-change_rate)*current_smell
 
     def smell_distance(self, node1, node2):
         smell1 = self.nodes[node1]['smell']
@@ -45,10 +28,26 @@ class SmellyGraph(nx.DiGraph):
             raise RuntimeError('path stuck in dead end')
         return min(smell_distances)[1]
 
+    def dissipate_smells(self, change_rate, nodes=None):
+        if nodes is None:
+            # by default take all nodes
+            nodes = self.nodes
+        for node in nodes:
+            neighbor_smells = [self.nodes[neighbor]['smell'] for neighbor in self.neighbors(node)]
+            # take average of neighbouring smells
+            neighbor_avg_smell = np.mean(neighbor_smells, axis=0)
+            current_smell = self.nodes[node]['smell']
+            # normalize
+            neighbor_avg_smell /= np.sqrt(np.mean(neighbor_avg_smell**2))
+            self.nodes[node]['smell'] = change_rate*neighbor_avg_smell + (1-change_rate)*current_smell
+
     def update_smells(self):
-        self.initialize_random_smells(300)
-        for i in range(30):
-            self.dissipate_smells(change_rate=0.1)
+        with self.graph_edit_lock:
+            np.random.seed(0)   # because everything has to be deterministic
+            for node in self.nodes:
+                self.nodes[node]['smell'] = np.random.uniform(-1, 1, self.smell_dimensions)
+            for i in range(30):
+                self.dissipate_smells(change_rate=0.1)
 
 
 

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 from currency_net import *
 import socket
 import sys
@@ -13,7 +12,7 @@ PORT = 1620  # Arbitrary non-privileged port
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print('Socket created')
 
-# Bind socket to local host and port
+# Bind socket to host and port
 try:
     s.bind((HOST, PORT))
 except socket.error as msg:
@@ -23,7 +22,7 @@ except socket.error as msg:
 print('Socket bind complete')
 
 # Start listening on socket
-s.listen(30)
+s.listen(100)
 print('Socket now listening')
 
 
@@ -36,15 +35,24 @@ except Exception as e:
 
 
 
+
+def verify_message(raw_message, public_key, signature):
+    hash = SHA256.new(raw_message).digest()
+    return public_key.verify(hash, signature)
+
+
 # Function for handling connections. This will be used to create threads
 def clientthread(conn, addr):
     # Sending message to connected client
     conn.sendall(b'Welcome to the server. Type something and hit enter\n')  # send only takes string
-    clients_public_key = 0
+    clients_public_key = None
+
+    # def send_message(message, sign=True):
+    #     conn.sendall(b'you have to login or register first')
 
     # infinite loop so that function do not terminate and thread do not end.
     while True:
-        # try:    # in case that the message from the client is invalid
+        try:    # in case that the message from the client is invalid
             # Receiving from client
             packed_message = conn.recv(1024)
             if not packed_message:
@@ -70,8 +78,7 @@ def clientthread(conn, addr):
             if not clients_public_key:
                 conn.sendall(b'you have to login or register first')
                 continue
-            hash = SHA256.new(raw_received_message).digest()
-            if not clients_public_key.verify(hash, signature):
+            if not verify_message(raw_received_message, clients_public_key, signature):
                 # didn't pass verification
                 clients_public_key = 0 # because the received key was signed incorrectly
                 conn.sendall(b'signature incorrect')
@@ -87,7 +94,7 @@ def clientthread(conn, addr):
                     conn.sendall(b'registered succesfully')
                 except RuntimeError:
                     # it means that node already is registered
-                    clients_public_key = 0
+                    clients_public_key = None
                     conn.sendall(b'this name is already registered')
             elif command == 'l':
                 conn.sendall(b'login succesfull')
@@ -103,17 +110,20 @@ def clientthread(conn, addr):
                 if (logged_name, name) not in N.edges:
                     # edge doesn't exist so create it
                     N.create_edge(logged_name, name)
-                    N.update_smells()
                 N[logged_name][name]['potential_trust'] = new_potential_trust
-                new_lvl = N.update_trust(logged_name, name)
+                N.update_trust(logged_name, name)
                 N.make_backup()
-                to_send = 'changed trust level to ' + str(new_lvl)
+                N.nodes[logged_name]['todays_actions'].append(packed_message)
+                to_send = 'changed your potential trust level to ' + str(new_potential_trust)
                 conn.sendall(to_send.encode())
             elif command == 't':        # make a transaction
                 name, amount = message
                 amount = int(amount)
                 if name not in N:
                     conn.sendall(b'given name is not registered')
+                    continue
+                if amount <= 0:
+                    conn.sendall(b'amount to transfer must be positive ;)')
                     continue
                 max_possible_amount, list_of_direct_transfers = N.transfer(logged_name, name, amount)
                 if max_possible_amount != amount:
@@ -122,6 +132,9 @@ def clientthread(conn, addr):
                     to_send += str(max_possible_amount)
                     conn.sendall(to_send.encode())
                     continue
+                N.nodes[logged_name]['last_transaction'] = packed_message   # record clients message for proof
+                N.nodes[logged_name]['todays_actions'].append(packed_message)
+                N.nodes[name]['todays_actions'].append(packed_message)
                 N.make_backup()
                 conn.sendall(b'transfer succesfull')
             elif command == 'b':
@@ -136,21 +149,26 @@ def clientthread(conn, addr):
                 conn.sendall(to_send.encode())
             else:
                 conn.sendall(b'didnt understand, type h for help')
-        # except:
-        #     conn.sendall(b'invalid message, type h for help')
+        except:
+            conn.sendall(b'invalid message, type h for help')
 
     # came out of loop
     conn.close()
     print('Disconnected with ' + addr[0] + ':' + str(addr[1]))
 
 
-# now keep talking with the client
-try:
-    while 1:
-        # wait to accept a connection - blocking call
-        conn, addr = s.accept()
-        print('Connected with ' + addr[0] + ':' + str(addr[1]))
+def network_updater(seconds_interval):
+    while True:
+        N.try_to_make_dayly_update()
+        time.sleep(seconds_interval)
 
-        start_new_thread(clientthread, (conn, addr))
-finally:
-    s.close()
+
+start_new_thread(network_updater, (60,))
+
+# now keep talking with the client
+while 1:
+    # wait to accept a connection - blocking call
+    conn, addr = s.accept()
+    print('Connected with ' + addr[0] + ':' + str(addr[1]))
+
+    start_new_thread(clientthread, (conn, addr))

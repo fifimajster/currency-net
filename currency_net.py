@@ -2,7 +2,6 @@ from graph_smell import *
 import math
 import time
 import pickle
-import threading
 
 # quick explanation:
 # N[a][b]['amount'] means amount of b tokens that a has
@@ -12,11 +11,11 @@ import threading
 class NetworkKeeper(SmellyGraph):
 
     initial_token_amount = 20000
-    universal_basic_income = 10000
+    universal_basic_income = 1000
     
     def __init__(self):
         SmellyGraph.__init__(self)
-        self.graph_edit_lock = threading.RLock()
+        self.day_of_the_month_we_payed_ubi_last_time = -1
 
     def register_node(self, name, public_key=None, overwrite=False):
         # first check if this name is already registered
@@ -26,8 +25,14 @@ class NetworkKeeper(SmellyGraph):
         self.nodes[name]['public_key'] = public_key
         self.add_edge(name, name)
         self[name][name]['trust'] = 1       # you must trust yourself completely
+        self[name][name]['potential_trust'] = 1       # you must trust yourself completely
         self[name][name]['amount'] = self.initial_token_amount  # use only integers !!
-    
+        np.random.seed(sum(map(ord, name)))  # because everything has to be deterministic
+        self.nodes[name]['smell'] = np.random.uniform(-1, 1, self.smell_dimensions)
+        self.nodes[name]['last_transaction'] = None
+        self.nodes[name]['todays_actions'] = []
+        self.nodes[name]['yesterdays_actions'] = []
+
     def create_edge(self, node1, node2):
         self.add_edge(node1, node2)
         self.add_edge(node2, node1)
@@ -58,14 +63,14 @@ class NetworkKeeper(SmellyGraph):
             return new_lvl
 
     def get_connections(self, node):
-        return [[neighbor, self[node][neighbor]['amount'], self[node][neighbor]['trust']]
+        return [[neighbor, self[node][neighbor]['potential_trust'], self[node][neighbor]['amount']]
                 for neighbor in self.neighbors(node)]
 
     def pay_ubi(self):
         with self.graph_edit_lock:
             for node in self.nodes:
-                self[node][node]['amount'] = self.universal_basic_income
-            self.last_ubi_payout = time.time()
+                self[node][node]['amount'] += self.universal_basic_income
+            self.day_of_the_month_we_payed_ubi_last_time = time.gmtime().tm_mday
 
     def total_tokens(self, node):
         return sum([self[node][neighbor]['amount']
@@ -146,6 +151,7 @@ class NetworkKeeper(SmellyGraph):
             return list_of_direct_transfers
 
     def transfer(self, sender, receiver, amount, test=False):
+        # watch out for negative transfers
         with self.graph_edit_lock:
             if amount == 'all':
                 amount = self.total_tokens(sender)
@@ -191,6 +197,20 @@ class NetworkKeeper(SmellyGraph):
     def make_backup(self):
         with open('network_backup.pickle', 'wb') as handle:
             pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def try_to_make_dayly_update(self):
+        if time.gmtime().tm_mday == self.day_of_the_month_we_payed_ubi_last_time:
+            # we already payed so do nothing
+            return
+        self.pay_ubi()
+        self.update_smells()
+        with self.graph_edit_lock:
+            for name in self.nodes:
+                self.nodes[name]['yesterdays_actions'] = self.nodes[name]['todays_actions']
+                self.nodes[name]['todays_actions'] = []
+
+
+
 
 
 

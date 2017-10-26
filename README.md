@@ -46,5 +46,4 @@ Ideally this system would be distributed on ethereum or [cicada](http://iamcicad
 ### Some short term things to code:
 
 * make some clever cryptography so you don't have to trust server unconditionally
-* updating smells should be more efficient and shold take trust lvl into consideration
-* (minor improvements to finding branches) not important
+* updating smells should take trust lvl into consideration
