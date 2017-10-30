@@ -75,8 +75,6 @@ def clientthread(conn, addr):
             command = full_message[2]
             message = full_message[3:]
 
-            print(message)
-
             if command == 'r':      # register
                 name, public_key_string = message
                 # get key from received string
