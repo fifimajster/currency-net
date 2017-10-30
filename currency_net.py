@@ -29,7 +29,7 @@ class NetworkKeeper(SmellyGraph):
         self[name][name]['amount'] = self.initial_token_amount  # use only integers !!
         np.random.seed(sum(map(ord, name)))  # because everything has to be deterministic
         self.nodes[name]['smell'] = np.random.uniform(-1, 1, self.smell_dimensions)
-        self.nodes[name]['last_transaction'] = None
+        self.nodes[name]['last_transaction'] = 'there is no last transaction'
         self.nodes[name]['todays_actions'] = []
         self.nodes[name]['yesterdays_actions'] = []
 
@@ -65,6 +65,17 @@ class NetworkKeeper(SmellyGraph):
     def get_connections(self, node):
         return [[neighbor, self[node][neighbor]['potential_trust'], self[node][neighbor]['amount']]
                 for neighbor in self.neighbors(node)]
+
+    def get_last_transaction(self, node):
+        return self.nodes[node]['last_transaction']
+
+    def get_actions(self, node):
+        res = ''
+        for action in self.nodes[name]['yesterdays_actions']:
+            res += action + ':'
+        for action in self.nodes[name]['todays_actions']:
+            res += action + ':'
+        return res
 
     def pay_ubi(self):
         with self.graph_edit_lock:
@@ -208,6 +219,9 @@ class NetworkKeeper(SmellyGraph):
             for name in self.nodes:
                 self.nodes[name]['yesterdays_actions'] = self.nodes[name]['todays_actions']
                 self.nodes[name]['todays_actions'] = []
+            for edge in self.edges:
+                # this can potentially be a lot of computing
+                self.update_trust(edge[0], edge[1])
 
 
 

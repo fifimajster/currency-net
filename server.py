@@ -5,6 +5,8 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto import Random
 from _thread import *
+import base64
+from Crypto.Signature import PKCS1_v1_5
 
 HOST = ''  # Symbolic name, meaning all available interfaces
 PORT = 1620  # Arbitrary non-privileged port
@@ -37,51 +39,68 @@ except Exception as e:
 
 
 def verify_message(raw_message, public_key, signature):
-    hash = SHA256.new(raw_message).digest()
-    return public_key.verify(hash, signature)
+    # signing doedn't work for now
+    # hash = SHA256.new(raw_message.encode()).digest()
+    # verifier = PKCS1_v1_5.new(public_key)
+    # verifier.verify(hash, signature)
+    s = "-----BEGIN RSA PUBLIC KEY-----\n" + \
+        signature + \
+        "\n-----END RSA PUBLIC KEY-----\n"
+    sigString = RSA.importKey(s)
+    return public_key == sigString
 
 
 # Function for handling connections. This will be used to create threads
 def clientthread(conn, addr):
     # Sending message to connected client
-    conn.sendall(b'Welcome to the server. Type something and hit enter\n')  # send only takes string
+    conn.sendall(b'connected to server\n')  # send only takes string
     clients_public_key = None
 
-    # def send_message(message, sign=True):
-    #     conn.sendall(b'you have to login or register first')
+    def send_to_client(message, sign=False):
+        message += '\n'
+        conn.sendall(message.encode())
 
     # infinite loop so that function do not terminate and thread do not end.
     while True:
         try:    # in case that the message from the client is invalid
             # Receiving from client
-            packed_message = conn.recv(1024)
-            if not packed_message:
+            unparsed_message = conn.recv(1024)
+            if not unparsed_message:
                 break
-            # unpack
-            signature, raw_received_message = pickle.loads(packed_message)
-            full_message = pickle.loads(raw_received_message)
-            timestamp = full_message[0]
-            command = full_message[1]
-            message = full_message[2:]
+            unparsed_message = unparsed_message[:-1]  # because there is a new line character at the end
+
+            full_message = unparsed_message.decode().split(" ")
+            signature = full_message[0]
+            timestamp = full_message[1]
+            command = full_message[2]
+            message = full_message[3:]
+
+            print(message)
 
             if command == 'r':      # register
-                name, clients_public_key = message
+                name, public_key_string = message
+                # get key from received string
+                s = "-----BEGIN RSA PUBLIC KEY-----\n" + \
+                    public_key_string + \
+                    "\n-----END RSA PUBLIC KEY-----\n"
+                clients_public_key = RSA.importKey(s)
+
             elif command == 'l':        # login
                 logged_name = message[0]
                 if logged_name in N:
                     clients_public_key = N.nodes[logged_name]['public_key']
                 else:
-                    conn.sendall(b'such name is not registered')
+                    send_to_client('such name is not registered')
                     continue
 
             # verify message
             if not clients_public_key:
-                conn.sendall(b'you have to login or register first')
+                send_to_client('you have to login or register first')
                 continue
-            if not verify_message(raw_received_message, clients_public_key, signature):
+            if not verify_message(" ".join(full_message[1:]), clients_public_key, signature):
                 # didn't pass verification
                 clients_public_key = 0 # because the received key was signed incorrectly
-                conn.sendall(b'signature incorrect')
+                send_to_client('signature incorrect')
                 continue
 
             # now we are verified
@@ -91,21 +110,21 @@ def clientthread(conn, addr):
                     N.register_node(name, public_key=clients_public_key)
                     N.make_backup()
                     logged_name = name
-                    conn.sendall(b'registered succesfully')
+                    send_to_client('registered succesfully')
                 except RuntimeError:
                     # it means that node already is registered
                     clients_public_key = None
-                    conn.sendall(b'this name is already registered')
+                    send_to_client('this name is already registered')
             elif command == 'l':
-                conn.sendall(b'login succesfull')
+                send_to_client('login succesfull')
             elif command == 'trust':
                 name, new_potential_trust = message
                 new_potential_trust = float(new_potential_trust)
                 if new_potential_trust > 1 or new_potential_trust < 0:
-                    conn.sendall(b'trust level must be between 0 and 1')
+                    send_to_client('trust level must be between 0 and 1')
                     continue
                 if name not in N:
-                    conn.sendall(b'given name is not registered')
+                    send_to_client('given name is not registered')
                     continue
                 if (logged_name, name) not in N.edges:
                     # edge doesn't exist so create it
@@ -113,44 +132,47 @@ def clientthread(conn, addr):
                 N[logged_name][name]['potential_trust'] = new_potential_trust
                 N.update_trust(logged_name, name)
                 N.make_backup()
-                N.nodes[logged_name]['todays_actions'].append(packed_message)
-                to_send = 'changed your potential trust level to ' + str(new_potential_trust)
-                conn.sendall(to_send.encode())
+                N.nodes[logged_name]['todays_actions'].append(unparsed_message)
+                send_to_client('changed trust for ' + name + ' to ' + str(new_potential_trust))
             elif command == 't':        # make a transaction
                 name, amount = message
                 amount = int(amount)
                 if name not in N:
-                    conn.sendall(b'given name is not registered')
+                    send_to_client('given name is not registered')
                     continue
                 if amount <= 0:
-                    conn.sendall(b'amount to transfer must be positive ;)')
+                    send_to_client('amount to transfer must be positive ;)')
                     continue
                 max_possible_amount, list_of_direct_transfers = N.transfer(logged_name, name, amount)
                 if max_possible_amount != amount:
                     # it means that transfer failed
-                    to_send = 'transfer failed, maximum possible amount you can transfer is '
-                    to_send += str(max_possible_amount)
-                    conn.sendall(to_send.encode())
+                    send_to_client('transfer failed, the most you can transfer is ' +
+                                   str(max_possible_amount))
                     continue
-                N.nodes[logged_name]['last_transaction'] = packed_message   # record clients message for proof
-                N.nodes[logged_name]['todays_actions'].append(packed_message)
-                N.nodes[name]['todays_actions'].append(packed_message)
+                N.nodes[logged_name]['last_transaction'] = unparsed_message   # record clients message for proof
+                N.nodes[logged_name]['todays_actions'].append(unparsed_message)
+                N.nodes[name]['todays_actions'].append(unparsed_message)
                 N.make_backup()
-                conn.sendall(b'transfer succesfull')
+                send_to_client('transfer succesfull')
             elif command == 'b':
                 balance = N.total_tokens(logged_name)
-                to_send = 'your balance is ' + str(balance)
-                conn.sendall(to_send.encode())
+                send_to_client('balance: ' + str(balance))
             elif command == 'c':    # get connections, their trust level and amount of their tokens
                 connections = N.get_connections(logged_name)
                 to_send = ''
                 for c in connections:
-                    to_send += c[0] + ' \t' + str(c[1]) + ' \t' + str(c[2]) + '\n'
-                conn.sendall(to_send.encode())
+                    to_send += c[0] + ' ' + str(c[1]) + ' ' + str(c[2]) + ':'
+                send_to_client('connections: ' + to_send)
+            elif command == 'last: ':
+                name = message
+                send_to_client('last' + N.get_last_transaction(name))
+            elif command == 'actions':
+                name = message
+                send_to_client('actions: ' + N.get_actions(name))
             else:
-                conn.sendall(b'didnt understand, type h for help')
-        except:
-            conn.sendall(b'invalid message, type h for help')
+                send_to_client('didnt understand, type h for help')
+        except Exception as e:
+            send_to_client('server error: ' + str(e))
 
     # came out of loop
     conn.close()
