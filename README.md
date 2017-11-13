@@ -29,7 +29,7 @@ You can run some simulations using currency-net.py. If there's enough connection
 
 For a normal user, run client.py. Later it will connect to a server which I will set up. For now you can set up your own server using server.py and changing hostname inside client.py.
 
-When you register using client.py, a key will be generated in the same directory. You have to keep it safely, because you will need it to log in.
+When you register using spongy-simple.apk, a key will be generated in the same directory. You have to keep it safely, because you will need it to log in.
 
 When you register it's best to use your full surname and name without a space and capitals. It will help to avoid double accounts. Examples: 'nicolascage', 'johnbongiovi', 'orenthalsimpson'. If you notice someone with other nick it may mean he is using many accounts, or he is faking to be someone else, so think twice before trusting him! It also makes it easier for other users to find you.
 
@@ -45,5 +45,10 @@ Ideally this system would be distributed on ethereum or [cicada](http://iamcicad
 
 ### Some short term things to code:
 
+* find a way to translate message signature from python to java, because now they don;t work
+* fix a bug that says to many values to unpack
+* add transaction history view and connections view in the app
+* add autocomplete in the app
+* migrate database to neo4j so it would be more efficient
 * make some clever cryptography so you don't have to trust server unconditionally
 * updating smells should take trust lvl into consideration
